@@ -192,7 +192,17 @@ def _request_title_levels(title_aided_config, title_dict, prompt_builder=None):
 
             logger.debug(f"Raw LLM output for title levels: {content}")
             dict_completion = json_repair.loads(content)
-            dict_completion = {int(k): int(v) for k, v in dict_completion.items()}
+            try:
+                dict_completion = {int(k): int(v) for k, v in dict_completion.items()}
+            except (ValueError, TypeError):
+                # json_repair sometimes garbles {0:1,1:2,...} into {'0':'1,1','1,2':'1,3',...}
+                # Fall back to regex parsing of key:value integer pairs from raw content
+                import re
+                pairs = re.findall(r'(\d+)\s*:\s*(\d+)', content)
+                if pairs:
+                    dict_completion = {int(k): int(v) for k, v in pairs}
+                else:
+                    raise
 
             if set(dict_completion.keys()) == expected_keys:
                 return dict_completion
