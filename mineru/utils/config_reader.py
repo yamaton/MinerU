@@ -14,6 +14,17 @@ except ImportError:
 CONFIG_FILE_NAME = os.getenv('MINERU_TOOLS_CONFIG_JSON', 'mineru.json')
 
 
+def _expand_env_vars(obj):
+    """Expand $ENV_VAR references in string values."""
+    if isinstance(obj, str) and obj.startswith('$'):
+        return os.environ.get(obj[1:], obj)
+    if isinstance(obj, dict):
+        return {k: _expand_env_vars(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_expand_env_vars(v) for v in obj]
+    return obj
+
+
 def read_config():
     if os.path.isabs(CONFIG_FILE_NAME):
         config_file = CONFIG_FILE_NAME
@@ -27,7 +38,7 @@ def read_config():
     else:
         with open(config_file, 'r', encoding='utf-8') as f:
             config = json.load(f)
-        return config
+        return _expand_env_vars(config)
 
 
 def get_s3_config(bucket_name: str):
